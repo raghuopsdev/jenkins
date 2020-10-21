@@ -1,0 +1,127 @@
+pipeline {
+    agent any
+    environment {
+        PATH = "/usr/local/maven/bin:$PATH"
+    }
+    stages {
+        stage("git") {
+            steps{
+                git 'https://github.com/edureka-git/DevOpsClassCodes'
+            }
+        }
+        stage("build code"){
+            steps{
+                sh "mvn clean package"
+            }
+        }
+        stage("Deployment"){
+            steps{
+                sh "sudo cp /var/lib/jenkins/workspace/example-pipeline/target/addressbook.war /usr/share/tomcat7/webapps"
+            }
+        }
+        stage('publish html report') {
+            steps{
+                echo "publishing the html report"
+                publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: ''])
+       
+            }
+        }
+        stage('clean up') {
+            steps{
+                echo "cleaning up the workspace"
+                cleanWs()
+         
+            }        
+        }  
+    }
+   
+}
+
+
+Raghu P <raghuopsdev@gmail.com>
+Wed, Sep 9, 7:56 PM
+to anwar.atg
+
+
+
+Optional:
+# vi /etc/passwd
+jenkins:x:498:497:Jenkins Automation Server:/var/lib/jenkins:/bin/bash
+--------------------------------
+#  usermod -aG wheel jenkins
+---------------------------------
+------------------------------------------------------
+# visudo
+-----------------------------------------------------
+## Allow root to run any commands anywhere
+root    ALL=(ALL)       ALL
+jenkins ALL=(ALL)       ALL
+## Allows members of the 'sys' group to run networking, software,
+## service management apps and more.
+# %sys ALL = NETWORKING, SOFTWARE, SERVICES, STORAGE, DELEGATING, PROCESSES, LOCATE, DRIVERS
+
+## Allows people in group wheel to run all commands
+%wheel  ALL=(ALL)       ALL
+
+## Same thing without a password
+%wheel  ALL=(ALL)       NOPASSWD: ALL
+jenkins ALL=(ALL)       NOPASSWD: ALL
+
+------------------------------------------------------
+Groovy Script
+-------------------------------------------------------
+
+#!/usr/bin/env groovy
+import hudson.model.*
+import hudson.EnvVars
+import groovy.json.JsonSlurperClassic
+import groovy.json.JsonBuilder
+import groovy.json.JsonOutput
+import java.net.URL
+try {
+
+node{
+ stage('Checkout') {
+ git 'https://github.com/edureka-git/DevOpsClassCodes'
+ }
+ stage('Build') {
+      dir('') {
+ sh 'export M2_HOME=/usr/local/maven'
+ sh 'export PATH=${M2_HOME}/bin:${PATH}'
+ sh 'mvn clean package'
+ }
+ }
+ stage ('Email') {
+ emailext attachLog: true, body: 'The status of the build can be obtained from the build log attached', subject: 'The build update is ', to: 'raghuopsdev@gmail.com'
+}
+stage('Deployment') {
+ // Deployment
+ script {
+ echo "deployment"
+ sh 'cp /var/lib/jenkins/workspace/demo-pipeline/target/addressbook.war /usr/share/tomcat7/webapps/'
+ }
+ }
+ stage('publish html report') {
+ echo "publishing the html report"
+ publishHTML([allowMissing: false, alwaysLinkToLastBuild:
+false, keepAll: false, reportDir: '', reportFiles: 'index.html', reportName:
+'HTML Report', reportTitles: ''])
+ }
+ stage('clean up') {
+ echo "cleaning up the workspace"
+ cleanWs()
+ }
+}// node
+} // try end
+finally {
+
+
+(currentBuild.result != "ABORTED") && node("master") {
+ // Send e-mail notifications for failed or unstable builds.
+ // currentBuild.result must be non-null for this step to work.
+ step([$class: 'Mailer',
+ notifyEveryUnstableBuild: true,
+ recipients: 'raghuopsdev@gmail.com',
+ sendToIndividuals: true])
+}
+}
